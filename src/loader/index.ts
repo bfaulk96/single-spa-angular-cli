@@ -157,14 +157,19 @@ const bootstrap = (opts: Options, props: any) => {
 };
 
 const mount = (opts: Options, props: any) => {
+    const { singleSpa } = props;
     return new Promise((resolve, reject) => {
-        getContainerEl(opts);
-        if (window.singleSpaAngularCli[opts.name]) {
-            window.singleSpaAngularCli[opts.name].mount(props);
-            resolve();
+        if (singleSpa.getAppStatus(opts.name) !== singleSpa.MOUNTED) {
+            getContainerEl(opts);
+            if (window.singleSpaAngularCli[opts.name]) {
+                window.singleSpaAngularCli[opts.name].mount(props);
+                resolve();
+            } else {
+                console.error(`Cannot mount ${opts.name} because that is not bootstraped`);
+                reject();
+            }
         } else {
-            console.error(`Cannot mount ${opts.name} because that is not bootstraped`);
-            reject();
+            resolve();
         }
     });
 };
@@ -173,13 +178,17 @@ const unmount = (opts: Options, props: any) => {
     const { singleSpa: { unloadApplication, getAppNames } } = props;
     return new Promise((resolve, reject) => {
         if (window.singleSpaAngularCli[opts.name]) {
-            window.singleSpaAngularCli[opts.name].unmount();
-            getContainerEl(opts).remove();
-            if (getAppNames().indexOf(opts.name) !== -1) {
-                unloadApplication(opts.name, { waitForUnmount: true });
+            if (props.preventUnmount) {
                 resolve();
             } else {
-                reject(`Cannot unmount ${opts.name} because that ${opts.name} is not part of the decalred applications : ${getAppNames()}`);
+                window.singleSpaAngularCli[opts.name].unmount();
+                getContainerEl(opts).remove();
+                if (getAppNames().indexOf(opts.name) !== -1) {
+                    unloadApplication(opts.name, {waitForUnmount: true});
+                    resolve();
+                } else {
+                    reject(`Cannot unmount ${opts.name} because that ${opts.name} is not part of the decalred applications : ${getAppNames()}`);
+                }
             }
         } else {
             reject(`Cannot unmount ${opts.name} because that is not bootstraped`);
