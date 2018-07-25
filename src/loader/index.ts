@@ -1,4 +1,4 @@
-import { Options } from './options.model';
+import {Options} from './options.model';
 
 declare const window: any;
 window.singleSpaAngularCli = window.singleSpaAngularCli || {};
@@ -46,7 +46,7 @@ const getContainerEl = (opts: Options) => {
 };
 
 const noLoadingApp = (currentApp: string, singleSpa: any) => {
-    const { getAppNames, getAppStatus, BOOTSTRAPPING } = singleSpa
+    const {getAppNames, getAppStatus, BOOTSTRAPPING} = singleSpa
     const firstInMounting = getAppNames().find((appName: string) => {
         return getAppStatus(appName) === BOOTSTRAPPING;
     });
@@ -56,7 +56,7 @@ const noLoadingApp = (currentApp: string, singleSpa: any) => {
 };
 
 const onNotLoadingApp = (currentApp: string, props: any) => {
-    const { singleSpa } = props;
+    const {singleSpa} = props;
     const bootstrapMaxTime = props.bootstrapMaxTime || 3000;
     return new Promise((resolve, reject) => {
         let time = 0;
@@ -157,32 +157,41 @@ const bootstrap = (opts: Options, props: any) => {
 };
 
 const mount = (opts: Options, props: any) => {
+    const {singleSpa} = props;
     return new Promise((resolve, reject) => {
-        getContainerEl(opts);
-        if (window.singleSpaAngularCli[opts.name]) {
-            window.singleSpaAngularCli[opts.name].mount(props);
-            resolve();
+        if (singleSpa.getAppStatus(opts.name) !== singleSpa.MOUNTED) {
+            getContainerEl(opts);
+            if (window.singleSpaAngularCli[opts.name]) {
+                window.singleSpaAngularCli[opts.name].mount(props);
+                resolve();
+            } else {
+                console.error(`Cannot mount ${opts.name} because that is not bootstraped`);
+                reject();
+            }
         } else {
-            console.error(`Cannot mount ${opts.name} because that is not bootstraped`);
-            reject();
+            resolve();
         }
     });
 };
 
 const unmount = (opts: Options, props: any) => {
-    const { singleSpa: { unloadApplication, getAppNames } } = props;
+    const {singleSpa: {unloadApplication, getAppNames}} = props;
     return new Promise((resolve, reject) => {
         if (window.singleSpaAngularCli[opts.name]) {
-            window.singleSpaAngularCli[opts.name].unmount();
-            const container = getContainerEl(opts);
-            if(container.parentNode) {
-                container.parentNode.removeChild(container);
-            }
-            if (getAppNames().indexOf(opts.name) !== -1) {
-                unloadApplication(opts.name, { waitForUnmount: true });
+            if (props.preventUnmount) {
                 resolve();
             } else {
-                reject(`Cannot unmount ${opts.name} because that ${opts.name} is not part of the decalred applications : ${getAppNames()}`);
+                window.singleSpaAngularCli[opts.name].unmount();
+                const container = getContainerEl(opts);
+                if (container.parentNode) {
+                    container.parentNode.removeChild(container);
+                }
+                if (getAppNames().indexOf(opts.name) !== -1) {
+                    unloadApplication(opts.name, {waitForUnmount: true});
+                    resolve();
+                } else {
+                    reject(`Cannot unmount ${opts.name} because that ${opts.name} is not part of the decalred applications : ${getAppNames()}`);
+                }
             }
         } else {
             reject(`Cannot unmount ${opts.name} because that is not bootstraped`);
